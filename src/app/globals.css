@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: 250 248 244;
+  --surface: 255 255 255;
+  --ink: 17 28 51;
+  --muted: 107 114 128;
+  --line: 226 222 214;
+  --accent: 37 74 140;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: 12 18 32;
+    --surface: 20 28 46;
+    --ink: 238 240 245;
+    --muted: 148 156 172;
+    --line: 42 52 74;
+    --accent: 125 165 235;
+  }
+}
+
+html, body { height: 100%; }
+body {
+  background: rgb(var(--paper));
+  color: rgb(var(--ink));
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding-top: env(safe-area-inset-top, 0px);
+}
