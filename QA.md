@@ -1,0 +1,61 @@
+# QA: Sprint 1a
+
+Automated (run on every change): `npm run lint && npm run typecheck && npm test && npm run build`
+Smoke against a running server: `BASE_URL=https://your-app.vercel.app npm run test:smoke`
+
+Manual checks below need real accounts. Mark each Pass / Fail and note the device.
+
+## 1. Setup
+- [ ] `/setup` after login: every env var shows "set" except GEMINI_API_KEY and VAULT_KEY (fine for now)
+- [ ] Database connection "ok", Migrations "N applied"
+- [ ] `/api/health` returns status ok, db ok, and only true/false values (no secrets)
+
+## 2. Auth
+- [ ] Signed out, opening any page lands on /login
+- [ ] Sign in with the owner account: lands on Home
+- [ ] Sign in with a different Google/GitHub account: rejected, /login shows the error message, no app access
+- [ ] Refresh and reopen the browser: still signed in
+- [ ] Opening /tasks directly while signed out redirects to /login
+
+## 3. Tasks
+- [ ] Add a task with title only: appears in the list, priority medium
+- [ ] Add with priority high, a deadline, estimate 30, notes: shows "high · due <date> · 30 min"
+- [ ] Empty title is blocked; 201-character title is rejected with a message
+- [ ] Deadline date shows the same calendar day you picked (Manila time)
+- [ ] Mark done: strikethrough, moves below open tasks; tap again: back to open
+- [ ] Delete removes it, and it stays gone after refresh
+- [ ] Search finds by partial title, case-insensitive; typing % or _ does not match everything
+- [ ] Filters All / To do / Doing / Done show the right items; empty filter shows "Nothing matches"
+- [ ] Reload the page: data persists
+- [ ] Add 30+ tasks: list still scrolls and loads quickly
+
+## 4. Home
+- [ ] Open task count matches the Tasks page
+- [ ] "Next up" shows at most 5 open tasks, earliest deadline first
+- [ ] Greeting matches time of day in Manila
+- [ ] Done tasks are not counted
+
+## 5. Phone and PWA (test on a real phone)
+- [ ] Layout fits with no sideways scroll; bottom tab bar not covered by the home indicator
+- [ ] Tab bar: Home, Calendar, Tasks, AI, More all work; More lists the other pages
+- [ ] + button opens Tasks and reaches the add form; it does not cover the last list item or tab bar
+- [ ] All tap targets are easy to hit; inputs do not zoom the page on focus
+- [ ] Add to Home Screen works; app opens standalone with the LIFEOS icon
+- [ ] Dark mode (phone setting): readable text, visible borders
+
+## 5b. Desktop
+- [ ] Sidebar shown, tab bar hidden, current page highlighted
+- [ ] Keyboard: Tab reaches every control, focus is visible, forms submit with Enter
+
+## 6. Resilience
+- [ ] After Neon has been idle 5+ minutes, first load still works (may take a few seconds, no crash)
+- [ ] Temporarily set a wrong DATABASE_URL: pages show a clear error state, no stack trace, /setup shows "error"
+- [ ] Remove DATABASE_URL: Tasks and Home show "not configured" messages
+
+## 7. Security
+- [ ] Another browser profile (signed out) cannot open /tasks or call server actions
+- [ ] View page source and network tab: no secrets or other users' data
+- [ ] Response headers include X-Frame-Options and X-Content-Type-Options
+
+## Known gaps (not bugs)
+Calendar, AI, Projects, Goals, Reality Check, Life Profile and Settings are placeholders. No edit-task screen yet. No Gemini or Privacy Gateway until Sprint 1b.
