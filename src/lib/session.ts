@@ -29,3 +29,10 @@ export async function requireOwnerId(): Promise<string> {
     return again[0].id;
   });
 }
+
+// For API routes: returns null instead of redirecting when the caller is not the signed-in owner.
+export async function getOwnerIdOrNull(): Promise<string | null> {
+  const session = await auth();
+  if (!isOwnerEmail(session?.user?.email, process.env.OWNER_EMAIL)) return null;
+  return requireOwnerId();
+}

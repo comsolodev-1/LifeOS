@@ -31,9 +31,18 @@ Real sign-in with Google/GitHub, Neon queries and migration, Vercel deploy, inst
 - Migration 0002: task_dependencies
 - Default Gemini model is gemini-3.1-flash-lite
 
+## Sprint 3: AI assistant and memory (built, tests pass)
+- Chat at /ai with streaming, persisted conversations (encrypted), delete chat, AI replies visually distinct
+- Gateway extended: function calling, streaming, thought-signature replay, tool results and arguments sanitized, arguments rehydrated
+- Tools: get_user_context, get_tasks, get_projects, search_memories (run immediately); create_task, update_task, create_project, propose_memory (propose only)
+- Propose-then-confirm: suggestion cards with editable fields, Confirm and Dismiss; exactly-once confirm via atomic status claim; 7-day expiry; ai_action_logs
+- Memory: AI proposals need approval; approved memories retrieved by keyword into new conversations; Life Profile page (life context, approve, edit, delete, add)
+- Migration 0003: life_context, conversations, messages, memories, pending_actions, ai_action_logs
+- 86 tests total (scripted-model end-to-end on in-memory Postgres)
+
 ## Not verified
-Sprint 2 screens on a phone and against Neon. A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
+A real streamed Gemini turn with function calling on gemini-3.1-flash-lite (the scripted tests cover our side only). Sprint 2 screens on a phone and against Neon. A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
 
 ## Next
-- Then Sprint 2 (projects, task links), per SPEC.md
+- Sprint 4: calendar and schedule photo import, per SPEC.md
 - Pending from spec: db:seed and db:reset:preview scripts (profile is created on first login instead of seeding)

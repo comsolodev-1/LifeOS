@@ -66,5 +66,10 @@ await check("signed-out session endpoint returns no session", async () => {
   assert(body === null || Object.keys(body).length === 0, "unexpected session when signed out");
 });
 
+await check("signed-out POST /api/chat is refused (401, or 503 if AI is not configured)", async () => {
+  const res = await fetch(base + "/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: "hi" }), redirect: "manual" });
+  assert([401, 503].includes(res.status), `status ${res.status}`);
+});
+
 console.log(failed ? `\n${failed} check(s) failed` : "\nAll smoke checks passed");
 process.exit(failed ? 1 : 0);

@@ -15,3 +15,9 @@
 - Cycle checks load the owner's edges and walk them in code (neon-http has no interactive transactions). Fine for one user.
 - The DAL is tested against PGlite (real Postgres in memory) through a test-only db seam in src/db/index.ts.
 - Expected failures throw AppError and are never retried by withRetry.
+- Chat messages, titles, life context, memories and pending payloads are encrypted with VAULT_KEY. Memory search therefore decrypts the owner's approved memories and scores them in code (fine at single-owner scale).
+- Assistant messages are stored with real values; every request re-sanitizes them, so tokens stay stable and no placeholders are stored.
+- Tool calls and results exist only inside one turn; only the final text is persisted. Gemini 3 thought signatures are replayed within the turn.
+- Confirming is exactly-once through a conditional status update (pending to confirming) rather than a transaction, because neon-http has none. A failed write returns the suggestion to pending.
+- Memory proposals live in the memories table (status proposed), not pending_actions.
+- /api/chat does its own auth and returns 401 JSON instead of redirecting, so the chat UI can show a message.

@@ -73,5 +73,22 @@ Manual checks below need real accounts. Mark each Pass / Fail and note the devic
 - [ ] Delete a task from its edit page: returns to /tasks, and any dependencies on it vanish
 - [ ] A made-up task URL (/tasks/3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f) shows a not-found page, no crash
 
+## 9. Sprint 3: AI assistant and memory
+Setup: run migration-0003 in Neon first. /setup must show Vault key valid and Gemini test connected.
+- [ ] Add yourself ("Me") and one friend to the Vault first (Settings > Privacy Vault)
+- [ ] /ai: send "Hi, what can you do?" Reply streams in word by word and is labeled AI
+- [ ] Send "Remind me to message <friend's name> about the project on <a future date>". An AI suggestion card appears (dashed border). Open /tasks: the task is NOT there yet
+- [ ] Edit the title on the card, tap Confirm: card says it's done, and the task now appears in /tasks with your edit
+- [ ] Tap Confirm twice quickly on another suggestion: only one task is created
+- [ ] Ask for another task and tap Dismiss: nothing is created
+- [ ] "What tasks do I have?" lists your real tasks, with real names (not [PERSON_1])
+- [ ] Settings > Privacy Vault > Recent AI requests: open a "chat" entry. Your friend's real name must not appear; a placeholder like [PERSON_1] must
+- [ ] Say "I usually study at night and go to the gym on Saturdays". A "remember this" card appears. Approve one, Reject the other
+- [ ] /profile: approved memory is listed; edit it, delete it, add one manually; write something in Life context and Save
+- [ ] Start a New chat and ask something related to an approved memory: the answer reflects it
+- [ ] Try typing a fake password ("my password is hunter2"): blocked with a clear message, and it never appears in the audit log
+- [ ] Refresh /ai: past chats are under "Chats"; delete one and confirm it's gone
+- [ ] Signed out (private window): /ai and /profile redirect to login
+
 ## Known gaps (not bugs)
-Calendar, AI, Goals, Reality Check, Life Profile and Settings are placeholders. No Gemini or Privacy Gateway until Sprint 1b.
+Calendar, Goals, Reality Check, and Settings (modes, export) are placeholders. The AI cannot read events or goals yet, and cannot analyze photos.
