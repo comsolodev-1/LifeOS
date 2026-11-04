@@ -2,6 +2,8 @@ import { sql } from "drizzle-orm";
 import { PageHeader } from "@/components/ui";
 import { getDb, isDbConfigured, withRetry } from "@/db";
 import { authProvidersConfigured, ENV_VARS } from "@/lib/owner";
+import { isVaultKeyValid } from "@/lib/privacy/crypto";
+import { GeminiTest } from "./gemini-test";
 
 export const dynamic = "force-dynamic";
 
@@ -49,10 +51,12 @@ export default async function SetupPage() {
         <Row label="Connection" value={db.connected} good={db.connected === "ok"} />
         <Row label="Migrations" value={db.migrations} good={db.migrations.endsWith("applied") && !db.migrations.startsWith("none")} />
       </ul>
-      <h2 className="mb-2 text-sm font-medium">Gemini</h2>
-      <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
-        <Row label="Connectivity" value="not built: Sprint 1b (Privacy Gateway)" good={false} />
+      <h2 className="mb-2 text-sm font-medium">Privacy and Gemini</h2>
+      <ul className="mb-3 divide-y divide-line rounded-xl border border-line bg-surface">
+        <Row label="Vault key (32 bytes)" value={isVaultKeyValid(process.env.VAULT_KEY) ? "valid" : "invalid or missing"} good={isVaultKeyValid(process.env.VAULT_KEY)} />
+        <Row label="Gemini model" value={process.env.GEMINI_MODEL ?? "default"} good />
       </ul>
+      <GeminiTest />
     </>
   );
 }

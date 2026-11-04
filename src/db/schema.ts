@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -55,3 +55,55 @@ export const tasks = pgTable(
 );
 
 export type Task = typeof tasks.$inferSelect;
+
+export const privacyVaultEntries = pgTable(
+  "privacy_vault_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+    entityType: text("entity_type").notNull(),
+    sensitivity: text("sensitivity").notNull().default("sensitive"),
+    encryptedValue: text("encrypted_value").notNull(),
+    encryptedAliases: text("encrypted_aliases").notNull(),
+    replacementPolicy: text("replacement_policy").notNull().default("token"),
+    valueHmac: text("value_hmac").notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("vault_owner_hmac_uniq").on(t.ownerId, t.valueHmac),
+    check("vault_type_check", sql`${t.entityType} in ('owner','person','email','phone','place','org','handle','other')`),
+    check("vault_sensitivity_check", sql`${t.sensitivity} in ('personal','sensitive','secret')`),
+    check("vault_policy_check", sql`${t.replacementPolicy} in ('token','generalize')`),
+  ],
+);
+
+export const privacyTokenMaps = pgTable(
+  "privacy_token_maps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id").notNull(),
+    token: text("token").notNull(),
+    vaultEntryId: uuid("vault_entry_id").references(() => privacyVaultEntries.id, { onDelete: "set null" }),
+    encryptedValue: text("encrypted_value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("token_conv_token_uniq").on(t.conversationId, t.token)],
+);
+
+export const privacyAudit = pgTable(
+  "privacy_audit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+    purpose: text("purpose").notNull(),
+    model: text("model").notNull(),
+    entityCounts: jsonb("entity_counts").$type<Record<string, number>>().notNull(),
+    blocked: boolean("blocked").notNull().default(false),
+    blockReason: text("block_reason"),
+    sanitizedPayload: text("sanitized_payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("audit_owner_created_idx").on(t.ownerId, t.createdAt)],
+);
