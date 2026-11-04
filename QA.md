@@ -57,5 +57,21 @@ Manual checks below need real accounts. Mark each Pass / Fail and note the devic
 - [ ] View page source and network tab: no secrets or other users' data
 - [ ] Response headers include X-Frame-Options and X-Content-Type-Options
 
+## 8. Sprint 2: projects and dependencies
+- [ ] Projects: create "Thesis"; it appears with 0 of 0 tasks done
+- [ ] On the project page, add 2 tasks; both show under it, and also on /tasks with the project name
+- [ ] Mark one done: progress bar and "1 of 2 tasks done" update on /projects
+- [ ] Rename the project and change status to Paused; both persist after refresh
+- [ ] Tasks: tap a title to open the edit page; change title, priority, deadline, estimate, notes, project, status to Doing; Save shows "Saved" and the list reflects it
+- [ ] Clear the deadline and estimate on the edit page: they disappear from the list
+- [ ] Filters on /tasks: status, priority, project, "No project", sort by priority/newest; Clear resets
+- [ ] Search with % or _ finds nothing unless a title contains them
+- [ ] Dependencies: make Task B blocked by Task A; B shows "Blocked by an unfinished task"; mark A done and the badge disappears
+- [ ] Try the reverse (A blocked by B): rejected with "circular dependency"
+- [ ] Remove a dependency with the X button
+- [ ] Delete a project: its tasks remain, shown as "No project"
+- [ ] Delete a task from its edit page: returns to /tasks, and any dependencies on it vanish
+- [ ] A made-up task URL (/tasks/3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f) shows a not-found page, no crash
+
 ## Known gaps (not bugs)
-Calendar, AI, Projects, Goals, Reality Check, Life Profile and Settings are placeholders. No edit-task screen yet. No Gemini or Privacy Gateway until Sprint 1b.
+Calendar, AI, Goals, Reality Check, Life Profile and Settings are placeholders. No Gemini or Privacy Gateway until Sprint 1b.

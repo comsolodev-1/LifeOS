@@ -23,8 +23,16 @@ Real sign-in with Google/GitHub, Neon queries and migration, Vercel deploy, inst
 - Migration 0001: privacy_vault_entries, privacy_token_maps, privacy_audit
 - 61 tests total (golden corpus, 300-case property test, tampering, injection, fail-closed, SDK isolation)
 
+## Sprint 2: Tasks and projects (built, tests pass)
+- Projects: create, rename, status, delete (tasks are kept), progress bar, project page with its own tasks
+- Tasks: edit page (title, notes, status incl. doing, priority, deadline, estimate, project), filters (status, priority, project), sorting, search, blocked badge
+- Dependencies with cycle prevention, self-link and cross-owner link rejection
+- Data-access layer tests run against a real in-memory Postgres (PGlite): owner isolation, ownership of linked projects/tasks, cycles, cascades. 70 tests total.
+- Migration 0002: task_dependencies
+- Default Gemini model is gemini-3.1-flash-lite
+
 ## Not verified
-A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
+Sprint 2 screens on a phone and against Neon. A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
 
 ## Next
 - Then Sprint 2 (projects, task links), per SPEC.md

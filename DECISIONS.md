@@ -10,3 +10,8 @@
 - Mobile nav has 4 tabs plus a More page rather than a bottom sheet.
 - System fonts instead of next/font/google, so builds need no network.
 - Placeholder pages for later sprints say "Not built yet" instead of showing fake data.
+- Deleting a project keeps its tasks (project_id set null). Deleting a task removes its dependency links.
+- Dependencies are advisory: a blocked task shows a badge but can still be marked done.
+- Cycle checks load the owner's edges and walk them in code (neon-http has no interactive transactions). Fine for one user.
+- The DAL is tested against PGlite (real Postgres in memory) through a test-only db seam in src/db/index.ts.
+- Expected failures throw AppError and are never retried by withRetry.

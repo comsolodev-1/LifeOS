@@ -1,33 +1,50 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createTask, deleteTask, setTaskStatus, taskInput, taskStatus } from "@/lib/dal/tasks";
+import { redirect } from "next/navigation";
+import { addDependency, createTask, deleteTask, removeDependency, setTaskStatus, taskStatus, updateTask } from "@/lib/dal/tasks";
+import { AppError } from "@/lib/errors";
+import { parseTaskForm } from "@/lib/forms";
 import { requireOwnerId } from "@/lib/session";
 
 export type FormState = { error?: string; ok?: boolean };
 
-function text(form: FormData, key: string) {
-  const v = form.get(key);
-  return typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
+function refresh() {
+  revalidatePath("/tasks");
+  revalidatePath("/projects", "layout");
+  revalidatePath("/");
+}
+
+function message(error: unknown): string {
+  return error instanceof AppError ? error.message : "Something went wrong. Try again.";
 }
 
 export async function addTask(_prev: FormState, form: FormData): Promise<FormState> {
   const ownerId = await requireOwnerId();
-  const deadlineRaw = text(form, "deadline");
-  const minutesRaw = text(form, "estimatedMinutes");
-  const deadline = deadlineRaw ? new Date(`${deadlineRaw}T23:59:00+08:00`) : undefined;
-  if (deadline && Number.isNaN(deadline.getTime())) return { error: "Invalid deadline" };
-  const parsed = taskInput.safeParse({
-    title: text(form, "title") ?? "",
-    notes: text(form, "notes"),
-    priority: text(form, "priority") ?? "medium",
-    deadline,
-    estimatedMinutes: minutesRaw ? Number(minutesRaw) : undefined,
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
-  await createTask(ownerId, parsed.data);
-  revalidatePath("/tasks");
-  revalidatePath("/");
+  const { data, error } = parseTaskForm(form);
+  if (!data) return { error };
+  try {
+    await createTask(ownerId, data);
+  } catch (e) {
+    return { error: message(e) };
+  }
+  refresh();
+  return { ok: true };
+}
+
+export async function saveTask(_prev: FormState, form: FormData): Promise<FormState> {
+  const ownerId = await requireOwnerId();
+  const id = form.get("id");
+  const status = taskStatus.safeParse(form.get("status"));
+  const { data, error } = parseTaskForm(form);
+  if (typeof id !== "string" || !status.success) return { error: "Invalid request" };
+  if (!data) return { error };
+  try {
+    await updateTask(ownerId, id, { ...data, status: status.data });
+  } catch (e) {
+    return { error: message(e) };
+  }
+  refresh();
   return { ok: true };
 }
 
@@ -37,8 +54,7 @@ export async function changeStatus(form: FormData) {
   const id = form.get("id");
   if (!status.success || typeof id !== "string") return;
   await setTaskStatus(ownerId, id, status.data);
-  revalidatePath("/tasks");
-  revalidatePath("/");
+  refresh();
 }
 
 export async function removeTask(form: FormData) {
@@ -46,6 +62,31 @@ export async function removeTask(form: FormData) {
   const id = form.get("id");
   if (typeof id !== "string") return;
   await deleteTask(ownerId, id);
-  revalidatePath("/tasks");
-  revalidatePath("/");
+  refresh();
+  if (form.get("redirect") === "1") redirect("/tasks");
+}
+
+export async function addBlocker(_prev: FormState, form: FormData): Promise<FormState> {
+  const ownerId = await requireOwnerId();
+  const id = form.get("id");
+  const dependsOn = form.get("dependsOn");
+  if (typeof id !== "string" || typeof dependsOn !== "string" || !dependsOn) return { error: "Pick a task" };
+  try {
+    await addDependency(ownerId, id, dependsOn);
+  } catch (e) {
+    return { error: message(e) };
+  }
+  refresh();
+  revalidatePath(`/tasks/${id}`);
+  return { ok: true };
+}
+
+export async function dropBlocker(form: FormData) {
+  const ownerId = await requireOwnerId();
+  const id = form.get("id");
+  const dependsOn = form.get("dependsOn");
+  if (typeof id !== "string" || typeof dependsOn !== "string") return;
+  await removeDependency(ownerId, id, dependsOn);
+  refresh();
+  revalidatePath(`/tasks/${id}`);
 }

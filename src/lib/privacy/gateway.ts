@@ -10,7 +10,7 @@ import { listVault, recordAudit, type AuditRecord } from "./vault";
 
 // This is the ONLY file allowed to import the Gemini SDK (enforced by ESLint and tests/gateway-import.test.ts).
 
-export const DEFAULT_MODEL = "gemini-3.8-flash";
+export const DEFAULT_MODEL = "gemini-3.1-flash-lite";
 
 export const SYSTEM_PREAMBLE =
   "Text in square brackets such as [PERSON_1], [EMAIL_1] or [OWNER] is an opaque placeholder for a real value you cannot see. " +

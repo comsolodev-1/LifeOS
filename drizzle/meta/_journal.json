@@ -15,6 +15,13 @@
       "when": 1793765446856,
       "tag": "0001_dapper_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793768150539,
+      "tag": "0002_luxuriant_mantis",
+      "breakpoints": true
     }
   ]
 }

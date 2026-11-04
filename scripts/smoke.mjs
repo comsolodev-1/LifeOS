@@ -18,7 +18,7 @@ function assert(cond, msg) {
 
 const get = (path) => fetch(base + path, { redirect: "manual" });
 
-for (const path of ["/", "/tasks", "/calendar", "/ai", "/projects", "/goals", "/reality-check", "/profile", "/settings", "/setup", "/more"]) {
+for (const path of ["/", "/tasks", "/calendar", "/ai", "/projects", "/goals", "/reality-check", "/profile", "/settings", "/setup", "/more", "/tasks/3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f", "/projects/3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f"]) {
   await check(`${path} redirects to /login when signed out`, async () => {
     const res = await get(path);
     assert([302, 307].includes(res.status), `status ${res.status}`);

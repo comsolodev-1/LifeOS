@@ -107,3 +107,20 @@ export const privacyAudit = pgTable(
   },
   (t) => [index("audit_owner_created_idx").on(t.ownerId, t.createdAt)],
 );
+
+export const taskDependencies = pgTable(
+  "task_dependencies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+    // taskId cannot be completed until dependsOnId is done
+    taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+    dependsOnId: uuid("depends_on_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("task_dep_uniq").on(t.taskId, t.dependsOnId),
+    index("task_dep_owner_idx").on(t.ownerId),
+    check("task_dep_not_self", sql`${t.taskId} <> ${t.dependsOnId}`),
+  ],
+);

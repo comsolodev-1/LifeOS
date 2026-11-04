@@ -3,9 +3,9 @@
 import { useActionState, useEffect, useRef } from "react";
 import { addTask, type FormState } from "./actions";
 
-const field = "min-h-11 w-full rounded-lg border border-line bg-paper px-3 text-base";
+export const field = "min-h-11 w-full rounded-lg border border-line bg-paper px-3 text-base";
 
-export function TaskForm() {
+export function TaskForm({ projects, fixedProjectId }: { projects: { id: string; name: string }[]; fixedProjectId?: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(addTask, {});
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
@@ -22,6 +22,16 @@ export function TaskForm() {
         </select>
         <input name="deadline" type="date" aria-label="Deadline" className={field} />
       </div>
+      {fixedProjectId ? (
+        <input type="hidden" name="projectId" value={fixedProjectId} />
+      ) : (
+        <select name="projectId" defaultValue="" aria-label="Project" className={field}>
+          <option value="">No project</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+      )}
       <input name="estimatedMinutes" type="number" min={1} inputMode="numeric" placeholder="Estimated minutes (optional)" aria-label="Estimated minutes" className={field} />
       <textarea name="notes" maxLength={2000} rows={2} placeholder="Notes (optional)" aria-label="Notes" className={`${field} py-2`} />
       {state.error ? <p role="alert" className="text-sm text-red-500">{state.error}</p> : null}
