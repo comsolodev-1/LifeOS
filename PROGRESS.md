@@ -40,9 +40,19 @@ Real sign-in with Google/GitHub, Neon queries and migration, Vercel deploy, inst
 - Migration 0003: life_context, conversations, messages, memories, pending_actions, ai_action_logs
 - 86 tests total (scripted-model end-to-end on in-memory Postgres)
 
+## Sprint 4: Schedule intelligence (built, tests pass)
+- Calendar: day, week (Monday start) and month views; add, edit, delete events; fixed commitments; repeating events (daily, weekly on chosen days, monthly, every N, until or count); skip a single occurrence
+- Overlap detection (back-to-back is not a conflict) and free-time gaps in the day view; today's schedule on Home
+- Timezones: everything stored as UTC, owner timezone (default Asia/Manila) used only for input and display; recurring events keep local wall-clock time across daylight saving (tested with New York)
+- Photo import: camera or gallery, resized and re-encoded on the phone (drops EXIF/GPS), black-box cover tool, per-upload consent screen, server strips metadata again, image processed in memory only, never stored
+- Extraction: JSON-schema response, per-field confidence, every value validated; low-confidence or invalid fields are flagged and the item starts unselected; nothing saves until the owner reviews and taps Save; rows re-validated on the server
+- AI chat can read the calendar (get_events)
+- Migration 0004: events
+- 132 tests total
+
 ## Not verified
-A real streamed Gemini turn with function calling on gemini-3.1-flash-lite (the scripted tests cover our side only). Sprint 2 screens on a phone and against Neon. A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
+A real phone photo through Gemini (needs your key and a photo), the touch drawing of cover boxes on a phone, and a real streamed Gemini turn with function calling on gemini-3.1-flash-lite (the scripted tests cover our side only). Sprint 2 screens on a phone and against Neon. A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
 
 ## Next
-- Sprint 4: calendar and schedule photo import, per SPEC.md
+- Sprint 5: goals, milestones and habits, per SPEC.md
 - Pending from spec: db:seed and db:reset:preview scripts (profile is created on first login instead of seeding)

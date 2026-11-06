@@ -247,3 +247,23 @@ describe("StreamRehydrator", () => {
     expect(run([...text])).toBe(expected);
   });
 });
+
+describe("calendar tool", () => {
+  it("lets the assistant read events (with overlaps) and keeps names out of the outbound payload", async () => {
+    const { createEvent } = await import("../src/lib/dal/events");
+    const [fresh] = await getDb().insert(schema.profiles).values({ email: "cal@example.com" }).returning();
+    await addVaultEntry(fresh.id, { type: "person", value: "Maria Santos", aliases: [] });
+    await createEvent(fresh.id, { title: "Meeting with Maria Santos", kind: "event", date: "2030-05-06", startTime: "10:00", endTime: "11:00" });
+    await createEvent(fresh.id, { title: "Dentist", kind: "event", date: "2030-05-06", startTime: "10:30", endTime: "11:30" });
+    const { calls, deps } = scripted([
+      [{ functionCall: { name: "get_events", args: { from: "2030-05-06", to: "2030-05-06" } } }],
+      [{ text: "You have two overlapping events: [PERSON_1] and Dentist." }],
+    ]);
+    const { events } = await turn(fresh.id, "what is on my calendar on 2030-05-06?", deps);
+    const result = JSON.stringify(calls[1].contents);
+    expect(result).toContain("overlapsWith");
+    expect(result).toContain("Dentist");
+    expect(outbound(calls)).not.toMatch(/Maria|Santos/);
+    expect(events.filter((e) => e.type === "text").map((e) => (e as { delta: string }).delta).join("")).toBe("You have two overlapping events: Maria Santos and Dentist.");
+  });
+});

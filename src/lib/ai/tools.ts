@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { addDays, localDateString, startOfLocalDay, isDateString } from "@/lib/calendar/timezone";
+import { conflictMap, occurrenceKey } from "@/lib/calendar/recurrence";
+import { getOwnerTimezone, listOccurrences } from "@/lib/dal/events";
 import { listProjects } from "@/lib/dal/projects";
 import { listTasks } from "@/lib/dal/tasks";
 import type { ToolDeclaration } from "@/lib/privacy/gateway";
@@ -22,6 +25,14 @@ export const TOOLS: ToolDeclaration[] = [
         priority: { type: "string", enum: ["low", "medium", "high"] },
         search: { type: "string", description: "Words to look for in the task title" },
       },
+    },
+  },
+  {
+    name: "get_events",
+    description: "Read the owner's calendar events between two dates (default: today and the next 14 days, at most 62 days). Marks overlapping events.",
+    parameters: {
+      type: "object",
+      properties: { from: { type: "string", description: "YYYY-MM-DD" }, to: { type: "string", description: "YYYY-MM-DD, inclusive" } },
     },
   },
   { name: "get_projects", description: "Read the owner's projects with progress.", parameters: { type: "object", properties: {} } },
@@ -110,6 +121,26 @@ export async function executeTool(ctx: ToolContext, name: string, args: Record<s
         return {
           response: {
             tasks: rows.map((t) => ({ id: t.id, title: t.title, status: t.status, priority: t.priority, deadline: day(t.deadline), project: t.projectName })),
+          },
+        };
+      }
+      case "get_events": {
+        const a = z.object({ from: z.string().optional(), to: z.string().optional() }).parse(args);
+        const tz = await getOwnerTimezone(ctx.ownerId);
+        const from = a.from && isDateString(a.from) ? a.from : localDateString(new Date(), tz);
+        let to = a.to && isDateString(a.to) ? a.to : addDays(from, 14);
+        if (to < from) to = from;
+        if (to > addDays(from, 62)) to = addDays(from, 62);
+        const occs = await listOccurrences(ctx.ownerId, startOfLocalDay(from, tz), startOfLocalDay(addDays(to, 1), tz));
+        const clashes = conflictMap(occs);
+        const time = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+        return {
+          response: {
+            timezone: tz,
+            events: occs.slice(0, 80).map((o) => ({
+              title: o.title, date: localDateString(o.start, tz), start: time(o.start), end: time(o.end), repeats: o.recurring,
+              overlapsWith: (clashes.get(occurrenceKey(o)) ?? []).map((c) => c.title),
+            })),
           },
         };
       }

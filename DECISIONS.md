@@ -21,3 +21,10 @@
 - Confirming is exactly-once through a conditional status update (pending to confirming) rather than a transaction, because neon-http has none. A failed write returns the suggestion to pending.
 - Memory proposals live in the memories table (status proposed), not pending_actions.
 - /api/chat does its own auth and returns 401 JSON instead of redirecting, so the chat UI can show a message.
+- Events store UTC plus the IANA zone they were created in. Recurring series expand at read time (never stored as rows) and keep local wall-clock time. Monthly repeats skip months that lack the day (the 31st).
+- No all-day or overnight events yet: end time must be later than start time on the same day.
+- Weeks start on Monday. Free time is shown for 7 AM to 9 PM only.
+- Photos: processed in memory, never persisted. Stripping happens on the phone (canvas re-encode) and again on the server (JPEG, PNG, WebP segment/chunk filtering). The claimed MIME type is ignored; the real type comes from the file bytes.
+- The privacy detectors cannot read pixels, so the gateway sends images only with explicit per-upload consent and a cover-box tool; the audit log records only "[image type, size]".
+- Photo-derived events are saved as fixed commitments with source "photo", only after the owner reviews them. The server re-validates every row and, for weekly classes, starts the series on the next matching weekday.
+- The name-guessing heuristic can tokenize place names such as "Camarines Norte" as people in Strict mode. Accepted trade-off; add exceptions later if it becomes annoying.

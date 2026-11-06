@@ -18,7 +18,7 @@ function assert(cond, msg) {
 
 const get = (path) => fetch(base + path, { redirect: "manual" });
 
-for (const path of ["/", "/tasks", "/calendar", "/ai", "/projects", "/goals", "/reality-check", "/profile", "/settings", "/setup", "/more", "/tasks/3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f", "/projects/3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f"]) {
+for (const path of ["/", "/tasks", "/calendar", "/ai", "/projects", "/goals", "/reality-check", "/profile", "/settings", "/setup", "/more", "/calendar/new", "/calendar/import", "/calendar?view=month&date=2026-11-05", "/calendar/event/3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f", "/tasks/3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f", "/projects/3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f"]) {
   await check(`${path} redirects to /login when signed out`, async () => {
     const res = await get(path);
     assert([302, 307].includes(res.status), `status ${res.status}`);
@@ -68,6 +68,11 @@ await check("signed-out session endpoint returns no session", async () => {
 
 await check("signed-out POST /api/chat is refused (401, or 503 if AI is not configured)", async () => {
   const res = await fetch(base + "/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: "hi" }), redirect: "manual" });
+  assert([401, 503].includes(res.status), `status ${res.status}`);
+});
+
+await check("signed-out POST /api/schedule/extract is refused (401, or 503 if AI is not configured)", async () => {
+  const res = await fetch(base + "/api/schedule/extract", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image: "AAAA", consent: true }), redirect: "manual" });
   assert([401, 503].includes(res.status), `status ${res.status}`);
 });
 

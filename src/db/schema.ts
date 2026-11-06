@@ -217,3 +217,28 @@ export const aiActionLogs = pgTable(
   },
   (t) => [index("ai_log_owner_created_idx").on(t.ownerId, t.createdAt)],
 );
+
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    notes: text("notes"),
+    kind: text("kind").notNull().default("event"),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    // IANA zone the event was created in; recurring events keep their local wall-clock time in this zone
+    timezone: text("timezone").notNull(),
+    recurrence: jsonb("recurrence").$type<{ freq: "daily" | "weekly" | "monthly"; interval: number; byWeekday?: number[]; until?: string; count?: number }>(),
+    exceptions: jsonb("exceptions").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    source: text("source").notNull().default("manual"),
+    ...timestamps,
+  },
+  (t) => [
+    index("events_owner_start_idx").on(t.ownerId, t.startsAt),
+    check("events_kind_check", sql`${t.kind} in ('event','fixed')`),
+    check("events_source_check", sql`${t.source} in ('manual','photo')`),
+    check("events_end_after_start", sql`${t.endsAt} > ${t.startsAt}`),
+  ],
+);

@@ -2,6 +2,9 @@ import Link from "next/link";
 import { Card, EmptyState, ErrorState, PageHeader } from "@/components/ui";
 import { isDbConfigured } from "@/db";
 import type { Task } from "@/db/schema";
+import { addDays, formatTime, localDateString, startOfLocalDay } from "@/lib/calendar/timezone";
+import { getOwnerTimezone, listOccurrences } from "@/lib/dal/events";
+import type { Occurrence } from "@/lib/calendar/recurrence";
 import { countOpenTasks, listTasks } from "@/lib/dal/tasks";
 import { requireOwnerId } from "@/lib/session";
 
@@ -15,13 +18,19 @@ export default async function HomePage() {
   const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: tz }).format(now));
   const dateText = new Intl.DateTimeFormat("en-PH", { dateStyle: "full", timeZone: tz }).format(now);
 
-  let data: { open: number; next: Task[] } | null = null;
+  let data: { open: number; next: Task[]; schedule: Occurrence[]; tz: string } | null = null;
   let failed = false;
   if (isDbConfigured()) {
     try {
       const ownerId = await requireOwnerId();
-      const [open, all] = await Promise.all([countOpenTasks(ownerId), listTasks(ownerId)]);
-      data = { open, next: all.filter((t) => t.status !== "done").slice(0, 5) };
+      const tz = await getOwnerTimezone(ownerId);
+      const todayDate = localDateString(new Date(), tz);
+      const [open, all, schedule] = await Promise.all([
+        countOpenTasks(ownerId),
+        listTasks(ownerId),
+        listOccurrences(ownerId, startOfLocalDay(todayDate, tz), startOfLocalDay(addDays(todayDate, 1), tz)),
+      ]);
+      data = { open, next: all.filter((t) => t.status !== "done").slice(0, 5), schedule, tz };
     } catch {
       failed = true;
     }
@@ -36,6 +45,22 @@ export default async function HomePage() {
       <Card>
         <p className="text-sm text-muted">Open tasks</p>
         <p className="text-3xl font-semibold">{data.open}</p>
+      </Card>
+      <Card>
+        <h2 className="mb-2 font-medium">Today&apos;s schedule</h2>
+        {data.schedule.length === 0 ? (
+          <p className="text-sm text-muted">Nothing scheduled today.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {data.schedule.map((o) => (
+              <li key={`${o.eventId}@${o.localDate}`} className="flex justify-between gap-3">
+                <span className="truncate">{o.title}</span>
+                <span className="shrink-0 text-muted">{formatTime(o.start, data.tz)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link href="/calendar" className="mt-3 inline-block text-sm text-accent">Open calendar</Link>
       </Card>
       <Card>
         <h2 className="mb-2 font-medium">Next up</h2>

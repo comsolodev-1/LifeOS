@@ -30,7 +30,9 @@ export class GatewayError extends Error {
 export type GatewayPart =
   | { text: string }
   | { functionCall: { name: string; args: Record<string, unknown> }; thoughtSignature?: string }
-  | { functionResponse: { name: string; response: Record<string, unknown> } };
+  | { functionResponse: { name: string; response: Record<string, unknown> } }
+  // Pixels cannot be inspected by the detectors. Callers must strip metadata, get the owner's consent, and treat any text read from the image as untrusted.
+  | { inlineData: { mimeType: string; data: string } };
 
 export interface GatewayMessage {
   role: "user" | "model";
@@ -55,6 +57,7 @@ export interface GatewayRequest {
   mode?: PrivacyMode;
   model?: string;
   tools?: ToolDeclaration[];
+  jsonSchema?: Record<string, unknown>;
 }
 
 export interface PreparedContent {
@@ -68,6 +71,7 @@ export interface PreparedRequest {
   system: string;
   contents: PreparedContent[];
   tools?: ToolDeclaration[];
+  jsonSchema?: Record<string, unknown>;
 }
 
 export type StreamChunk =
@@ -111,6 +115,7 @@ function renderPayload(system: string, contents: PreparedContent[]): string {
   for (const c of contents) {
     for (const p of c.parts) {
       if ("text" in p) lines.push(`${c.role}: ${p.text}`);
+      else if ("inlineData" in p) lines.push(`${c.role}: [image ${p.inlineData.mimeType}, ${Math.round((p.inlineData.data.length * 3) / 4 / 1024)} KB]`);
       else if ("functionCall" in p) lines.push(`${c.role} calls ${p.functionCall.name}: ${JSON.stringify(p.functionCall.args)}`);
       else lines.push(`${c.role} result of ${p.functionResponse.name}: ${JSON.stringify(p.functionResponse.response)}`);
     }
@@ -153,6 +158,7 @@ async function prepare(
       const source: GatewayPart[] = m.parts ?? [{ text: m.text ?? "" }];
       const parts = source.map((p): GatewayPart => {
         if ("text" in p) return { text: run(p.text) };
+        if ("inlineData" in p) return p;
         if ("functionCall" in p) {
           return { functionCall: { name: p.functionCall.name, args: deep(p.functionCall.args) as Record<string, unknown> }, thoughtSignature: p.thoughtSignature };
         }
@@ -187,7 +193,7 @@ async function prepare(
   }
 
   await deps.audit({ purpose: req.purpose, model, entityCounts: report.counts, blocked: false, sanitizedPayload: payload }).catch(() => {});
-  return { prepared: { model, system, contents, tools: req.tools }, report };
+  return { prepared: { model, system, contents, tools: req.tools, jsonSchema: req.jsonSchema }, report };
 }
 
 export async function sendThroughGateway(req: GatewayRequest, deps: GatewayDeps): Promise<GatewayResult> {
@@ -227,7 +233,9 @@ function sdkContents(contents: PreparedContent[]) {
     parts: c.parts.map((p) =>
       "text" in p
         ? { text: p.text }
-        : "functionCall" in p
+        : "inlineData" in p
+          ? { inlineData: p.inlineData }
+          : "functionCall" in p
           ? { functionCall: p.functionCall, ...(p.thoughtSignature ? { thoughtSignature: p.thoughtSignature } : {}) }
           : { functionResponse: p.functionResponse },
     ),
@@ -243,6 +251,7 @@ function client(): GoogleGenAI {
 function sdkConfig(req: PreparedRequest) {
   return {
     systemInstruction: req.system,
+    ...(req.jsonSchema ? { responseMimeType: "application/json", responseJsonSchema: req.jsonSchema } : {}),
     ...(req.tools?.length
       ? { tools: [{ functionDeclarations: req.tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.parameters })) }] }
       : {}),
