@@ -26,12 +26,14 @@ Setup: run migration-0004-calendar.sql in Neon first.
 - [ ] Settings > Privacy Vault > Recent AI requests: a "schedule_extract" entry shows "[image ...]" and no personal text
 - [ ] In AI chat ask "what's on my calendar this week?": it lists your events
 
-## Photo import fixes (retest only this)
-Use the same weekly-schedule photo (32 events expected).
-- [ ] Titles come out clean: "History Lecture", "Study: Active Recall", "Lunch", "Exercise" (no "9AM", no brackets, no ALL CAPS)
-- [ ] Import the same photo again and Save: it says "Skipped N that were already there" and no duplicates appear in the calendar
-- [ ] Open Import photo: "Clean up imported events (N)" appears at the bottom. Tap it, then "Delete all N imported events": the calendar is clear of them, and events you added by hand are still there
-- [ ] Re-import the photo, tick "Repeat every week" on one row, Save: that class appears every week from its date
+## Photo import: keeps working while you navigate (retest only this)
+- [ ] Choose a photo, Continue, Send. While it says "Reading your schedule", tap Home or Tasks. A banner "Reading your schedule photo. You can keep using the app." shows on every page
+- [ ] When it finishes, the banner changes to "Your schedule is ready to review". Tap it: the review list is there (nothing was lost)
+- [ ] Go to another page and back to Import photo while the list is open: the list and your edits (unticked rows, changed titles) are still there
+- [ ] Refresh the browser on the review screen: the list is still there. Close the tab and open the app again: it is gone (by design)
+- [ ] "Discard and start over" clears the list and returns to choosing a photo
+- [ ] After Save, leaving and returning to Import photo starts fresh (no old list)
+- [ ] Earlier fixes still fine: clean titles, "Skipped N that were already there", and the cleanup button
 
 ## Known gaps (not bugs)
 Goals, Reality Check, and Settings (modes, export) are placeholders. The AI cannot read events or goals yet, and cannot analyze photos.

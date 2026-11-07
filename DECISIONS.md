@@ -32,3 +32,5 @@
 - Photo rows that show calendar dates are saved as one-off events by default; the owner can tick "Repeat every week" per row.
 - Title cleaning is rule-based, not AI: it drops a leading time, strips brackets wrapping the whole title, and title-cases ALL CAPS. It keeps misspellings. Words of two letters or less and bracketed tags stay uppercase.
 - Duplicate detection on import matches title (case-insensitive) plus exact start and end. It does not compare repeat rules.
+- Import state lives in a client provider in the (app) layout so it persists across in-app navigation. Only the review text is stored in sessionStorage; the photo is never persisted and "Scan again" is unavailable after a page reload (the photo is gone by design).
+- Known limitation: the AI chat still stops showing a reply if you leave the page mid-answer.

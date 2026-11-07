@@ -62,8 +62,14 @@ Real sign-in with Google/GitHub, Neon queries and migration, Vercel deploy, inst
 - Saving skips events that already exist (same title and times); "Delete all imported events" button on the import page
 - 158 tests total
 
+## Sprint 4 fix 3: import survives navigation
+- Import state moved into a provider in the app layout: a running scan continues while you use other pages; a banner on every page shows progress and "ready to review"
+- Review list (text only, never the photo) kept in session storage so a refresh does not lose edits; cleared on save, discard, or when the tab closes
+- "Discard and start over" button
+- 162 tests total
+
 ## Not verified
-A real phone photo through Gemini (needs your key and a photo), the touch drawing of cover boxes on a phone, and a real streamed Gemini turn with function calling on gemini-3.1-flash-lite (the scripted tests cover our side only). Sprint 2 screens on a phone and against Neon. A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
+Navigation behaviour in a real browser (the logic is tested, the screens are not), a real phone photo through Gemini (needs your key and a photo), the touch drawing of cover boxes on a phone, and a real streamed Gemini turn with function calling on gemini-3.1-flash-lite (the scripted tests cover our side only). Sprint 2 screens on a phone and against Neon. A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
 
 ## Next
 - Sprint 5: goals, milestones and habits, per SPEC.md
