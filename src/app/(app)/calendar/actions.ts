@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { eventInput, createEvent, createEvents, deleteEvent, getOwnerTimezone, skipOccurrence, updateEvent, type EventInput } from "@/lib/dal/events";
+import { eventInput, createEvent, createEventsSkippingDuplicates, deleteEvent, deleteEventsBySource, getOwnerTimezone, skipOccurrence, updateEvent, type EventInput } from "@/lib/dal/events";
 import { buildImportInputs } from "@/lib/calendar/import";
 import { isDateString, localDateString } from "@/lib/calendar/timezone";
 import { AppError } from "@/lib/errors";
@@ -137,12 +137,25 @@ export async function saveImported(_prev: EventFormState, form: FormData): Promi
   const built = buildImportInputs(items, until, localDateString(new Date(), tz));
   if (!built.inputs) return { error: built.error };
   const inputs = built.inputs;
+  let result;
   try {
-    await createEvents(ownerId, inputs, "photo");
+    result = await createEventsSkippingDuplicates(ownerId, inputs, "photo");
   } catch (e) {
     return { error: msg(e) };
   }
   revalidatePath("/calendar");
   revalidatePath("/");
-  return { ok: true, message: `Saved ${inputs.length} event${inputs.length === 1 ? "" : "s"} to your calendar.` };
+  const { created, skipped } = result;
+  return {
+    ok: true,
+    message: `Saved ${created} event${created === 1 ? "" : "s"} to your calendar.${skipped ? ` Skipped ${skipped} that were already there.` : ""}`,
+  };
+}
+
+export async function removeImported() {
+  const ownerId = await requireOwnerId();
+  await deleteEventsBySource(ownerId, "photo");
+  revalidatePath("/calendar");
+  revalidatePath("/");
+  redirect("/calendar");
 }

@@ -46,6 +46,34 @@ const rawEvent = z.object({
 });
 const rawResponse = z.object({ events: z.array(z.unknown()).max(300) });
 
+const SMALL_WORDS = new Set(["a", "an", "and", "at", "by", "for", "in", "of", "on", "or", "the", "to", "vs"]);
+
+function capitalize(word: string): string {
+  const i = word.search(/\p{L}/u);
+  return i < 0 ? word : word.slice(0, i) + word[i].toUpperCase() + word.slice(i + 1).toLowerCase();
+}
+
+// Tidies how a title was printed in the picture: drops a leading time like "9AM", removes brackets that wrap the whole title,
+// and turns ALL CAPS into normal capitals. Anything else is left exactly as written.
+export function cleanTitle(raw: string): string {
+  const original = raw.replace(/\s+/g, " ").trim();
+  let t = original.replace(/^\d{1,2}(?::\d{2})?\s*(?:AM|PM)\b\s*[-:]?\s*/i, "").trim();
+  if (/^\[[^\[\]]*\]$/.test(t)) t = t.slice(1, -1).trim();
+  if (!t) return original;
+  if (/\p{Lu}/u.test(t) && !/\p{Ll}/u.test(t)) {
+    t = t
+      .split(" ")
+      .map((w, i) => {
+        const core = w.replace(/[^\p{L}]/gu, "").toLowerCase();
+        if (core.length === 0) return w;
+        if (i > 0 && SMALL_WORDS.has(core)) return w.toLowerCase();
+        return core.length <= 2 || w.includes("[") ? w.toUpperCase() : capitalize(w);
+      })
+      .join(" ");
+  }
+  return t;
+}
+
 export type CandidateField = "title" | "schedule" | "startTime" | "endTime";
 
 export interface Candidate {
@@ -76,7 +104,7 @@ export function normalizeCandidates(raw: unknown, today: string): { candidates: 
     const flags = new Set<CandidateField>();
     const c = v.confidence ?? {};
 
-    const title = typeof v.title === "string" ? v.title.replace(/\s+/g, " ").trim().slice(0, 200) : "";
+    const title = typeof v.title === "string" ? cleanTitle(v.title).slice(0, 200) : "";
     if (!title || conf(c.title) < UNCERTAIN_BELOW) flags.add("title");
 
     const days = Array.isArray(v.days)
@@ -138,7 +166,7 @@ export function extractionPrompt(today: string, timezone: string): string {
     "Read the start time from the block's label or from the time row it sits in. If no end time is written, estimate it from the block's height against the time rows and give a lower confidence for endTime.",
     "Use 24-hour HH:MM for startTime and endTime. If AM/PM is unclear, guess but give a low confidence.",
     "Give a confidence from 0 to 1 for title, schedule (days or date), startTime and endTime. Use a low value when text is blurry, covered, ambiguous or guessed.",
-    "Copy titles as written, even if they look misspelled. Skip anything you cannot read.",
+    "Give each title without its time prefix and without square brackets, but keep the wording as written, even if it looks misspelled. Skip anything you cannot read.",
     "Before answering, count the blocks in each day or column and make sure your output has the same number. Return at most 80 events.",
   ].join("\n");
 }

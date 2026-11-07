@@ -30,3 +30,5 @@
 - The name-guessing heuristic can tokenize place names such as "Camarines Norte" as people in Strict mode. Accepted trade-off; add exceptions later if it becomes annoying.
 - Extraction runs at temperature 0. Gemini can still vary slightly, so the review screen offers a manual re-scan that only adds events not already listed.
 - Photo rows that show calendar dates are saved as one-off events by default; the owner can tick "Repeat every week" per row.
+- Title cleaning is rule-based, not AI: it drops a leading time, strips brackets wrapping the whole title, and title-cases ALL CAPS. It keeps misspellings. Words of two letters or less and bracketed tags stay uppercase.
+- Duplicate detection on import matches title (case-insensitive) plus exact start and end. It does not compare repeat rules.

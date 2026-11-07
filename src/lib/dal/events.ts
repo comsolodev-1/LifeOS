@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, lt, or, isNull, isNotNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, or, isNull, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, withRetry } from "@/db";
 import { events, profiles } from "@/db/schema";
@@ -122,4 +122,45 @@ export async function listOccurrences(ownerId: string, from: Date, to: Date): Pr
 export async function countEvents(ownerId: string) {
   const rows = await withRetry(() => getDb().select({ n: sql<number>`count(*)::int` }).from(events).where(eq(events.ownerId, ownerId)));
   return rows[0]?.n ?? 0;
+}
+
+const dupKey = (title: string, start: Date, end: Date) => `${title.trim().toLowerCase()}|${start.getTime()}|${end.getTime()}`;
+
+// Saves imported events but skips any that already exist with the same title and times, so re-importing a photo does not duplicate.
+export async function createEventsSkippingDuplicates(ownerId: string, inputs: EventInput[], source: "manual" | "photo" = "photo") {
+  const tz = await getOwnerTimezone(ownerId);
+  const parsed = inputs.map((input) => {
+    const data = eventInput.parse(input);
+    return { data, ...toTimes(data, tz) };
+  });
+  const starts = [...new Set(parsed.map((p) => p.startsAt.getTime()))].map((ms) => new Date(ms));
+  const existing = starts.length
+    ? await withRetry(() =>
+        getDb().select({ title: events.title, startsAt: events.startsAt, endsAt: events.endsAt }).from(events).where(and(eq(events.ownerId, ownerId), inArray(events.startsAt, starts))),
+      )
+    : [];
+  const seen = new Set(existing.map((e) => dupKey(e.title, e.startsAt, e.endsAt)));
+  let skipped = 0;
+  let created = 0;
+  for (const p of parsed) {
+    const key = dupKey(p.data.title, p.startsAt, p.endsAt);
+    if (seen.has(key)) {
+      skipped++;
+      continue;
+    }
+    seen.add(key);
+    await createEvent(ownerId, p.data, source);
+    created++;
+  }
+  return { created, skipped };
+}
+
+export async function countEventsBySource(ownerId: string, source: "manual" | "photo") {
+  const rows = await withRetry(() => getDb().select({ n: sql<number>`count(*)::int` }).from(events).where(and(eq(events.ownerId, ownerId), eq(events.source, source))));
+  return rows[0]?.n ?? 0;
+}
+
+export async function deleteEventsBySource(ownerId: string, source: "manual" | "photo") {
+  const rows = await withRetry(() => getDb().delete(events).where(and(eq(events.ownerId, ownerId), eq(events.source, source))).returning({ id: events.id }));
+  return rows.length;
 }

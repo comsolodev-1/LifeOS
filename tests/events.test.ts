@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { __setDbForTests } from "../src/db";
 import * as schema from "../src/db/schema";
 import { conflictMap } from "../src/lib/calendar/recurrence";
-import { createEvent, createEvents, deleteEvent, getEvent, getOwnerTimezone, listOccurrences, skipOccurrence, updateEvent } from "../src/lib/dal/events";
+import { countEventsBySource, createEvent, createEvents, createEventsSkippingDuplicates, deleteEvent, deleteEventsBySource, getEvent, getOwnerTimezone, listOccurrences, skipOccurrence, updateEvent } from "../src/lib/dal/events";
 import { AppError, NotFoundError } from "../src/lib/errors";
 
 let A: string;
@@ -101,5 +101,34 @@ describe("events", () => {
     const keyOf = (t: string) => `${occs.find((o) => o.title === t)?.eventId}@2027-01-12`;
     expect(conflicts.get(keyOf("X"))?.map((o) => o.title)).toEqual(["Y"]);
     expect(conflicts.has(keyOf("Z"))).toBe(false);
+  });
+});
+
+describe("photo import safety", () => {
+  const item = (title: string, startTime = "09:00", endTime = "10:00") => ({ title, kind: "fixed" as const, date: "2027-02-02", startTime, endTime });
+
+  it("skips events that already exist, including repeats inside the same batch", async () => {
+    const first = await createEventsSkippingDuplicates(C, [item("History Lecture"), item("Lab", "11:00", "12:00"), item("history lecture")]);
+    expect(first).toEqual({ created: 2, skipped: 1 });
+    const again = await createEventsSkippingDuplicates(C, [item("History Lecture"), item("Lab", "11:00", "12:00"), item("New thing", "14:00", "15:00")]);
+    expect(again).toEqual({ created: 1, skipped: 2 });
+    const occs = await listOccurrences(C, d("2027-02-02T00:00:00Z"), d("2027-02-03T12:00:00Z"));
+    expect(occs.filter((o) => o.title.toLowerCase() === "history lecture").length).toBe(1);
+  });
+
+  it("treats the same title at a different time or for another owner as new", async () => {
+    expect(await createEventsSkippingDuplicates(C, [item("History Lecture", "10:00", "11:00")])).toEqual({ created: 1, skipped: 0 });
+    expect(await createEventsSkippingDuplicates(A, [item("History Lecture")])).toEqual({ created: 1, skipped: 0 });
+  });
+
+  it("deletes only the owner's photo-imported events", async () => {
+    const manual = await createEvent(C, { ...item("Hand made"), date: "2027-03-03" });
+    const before = await countEventsBySource(C, "photo");
+    expect(before).toBeGreaterThan(0);
+    const otherBefore = await countEventsBySource(A, "photo");
+    expect(await deleteEventsBySource(C, "photo")).toBe(before);
+    expect(await countEventsBySource(C, "photo")).toBe(0);
+    expect(await countEventsBySource(A, "photo")).toBe(otherBefore);
+    expect(await getEvent(C, manual.id)).not.toBeNull();
   });
 });

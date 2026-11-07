@@ -26,14 +26,12 @@ Setup: run migration-0004-calendar.sql in Neon first.
 - [ ] Settings > Privacy Vault > Recent AI requests: a "schedule_extract" entry shows "[image ...]" and no personal text
 - [ ] In AI chat ask "what's on my calendar this week?": it lists your events
 
-## Photo import consistency fix (retest this one)
-Use the same weekly-schedule photo that gave 25 and then 4 events.
-- [ ] Upload it 3 times (New photo each time). The number of events found should be about the same each time, and close to the number of blocks you can count in the picture
-- [ ] Events in the picture show with their own dates (for example Nov 9) and are sorted by date and time
-- [ ] "N events found, M selected" shows, and Select all / Select none work
-- [ ] "Repeat every week" appears on dated rows. Tick it on one, Save: it appears every week from that date
-- [ ] "Missed some? Scan again" adds only events that were not already listed (or says nothing new)
-- [ ] Save a batch of 30 or more at once: all appear in the calendar
+## Photo import fixes (retest only this)
+Use the same weekly-schedule photo (32 events expected).
+- [ ] Titles come out clean: "History Lecture", "Study: Active Recall", "Lunch", "Exercise" (no "9AM", no brackets, no ALL CAPS)
+- [ ] Import the same photo again and Save: it says "Skipped N that were already there" and no duplicates appear in the calendar
+- [ ] Open Import photo: "Clean up imported events (N)" appears at the bottom. Tap it, then "Delete all N imported events": the calendar is clear of them, and events you added by hand are still there
+- [ ] Re-import the photo, tick "Repeat every week" on one row, Save: that class appears every week from its date
 
 ## Known gaps (not bugs)
 Goals, Reality Check, and Settings (modes, export) are placeholders. The AI cannot read events or goals yet, and cannot analyze photos.
