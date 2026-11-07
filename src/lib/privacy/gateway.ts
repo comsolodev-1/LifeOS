@@ -58,6 +58,8 @@ export interface GatewayRequest {
   model?: string;
   tools?: ToolDeclaration[];
   jsonSchema?: Record<string, unknown>;
+  // Temperature 0 and a larger output budget, for extraction jobs that must give the same answer each time.
+  deterministic?: boolean;
 }
 
 export interface PreparedContent {
@@ -72,6 +74,7 @@ export interface PreparedRequest {
   contents: PreparedContent[];
   tools?: ToolDeclaration[];
   jsonSchema?: Record<string, unknown>;
+  deterministic?: boolean;
 }
 
 export type StreamChunk =
@@ -193,7 +196,7 @@ async function prepare(
   }
 
   await deps.audit({ purpose: req.purpose, model, entityCounts: report.counts, blocked: false, sanitizedPayload: payload }).catch(() => {});
-  return { prepared: { model, system, contents, tools: req.tools, jsonSchema: req.jsonSchema }, report };
+  return { prepared: { model, system, contents, tools: req.tools, jsonSchema: req.jsonSchema, deterministic: req.deterministic }, report };
 }
 
 export async function sendThroughGateway(req: GatewayRequest, deps: GatewayDeps): Promise<GatewayResult> {
@@ -251,6 +254,7 @@ function client(): GoogleGenAI {
 function sdkConfig(req: PreparedRequest) {
   return {
     systemInstruction: req.system,
+    ...(req.deterministic ? { temperature: 0, maxOutputTokens: 8192 } : {}),
     ...(req.jsonSchema ? { responseMimeType: "application/json", responseJsonSchema: req.jsonSchema } : {}),
     ...(req.tools?.length
       ? { tools: [{ functionDeclarations: req.tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.parameters })) }] }

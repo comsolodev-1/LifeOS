@@ -28,3 +28,5 @@
 - The privacy detectors cannot read pixels, so the gateway sends images only with explicit per-upload consent and a cover-box tool; the audit log records only "[image type, size]".
 - Photo-derived events are saved as fixed commitments with source "photo", only after the owner reviews them. The server re-validates every row and, for weekly classes, starts the series on the next matching weekday.
 - The name-guessing heuristic can tokenize place names such as "Camarines Norte" as people in Strict mode. Accepted trade-off; add exceptions later if it becomes annoying.
+- Extraction runs at temperature 0. Gemini can still vary slightly, so the review screen offers a manual re-scan that only adds events not already listed.
+- Photo rows that show calendar dates are saved as one-off events by default; the owner can tick "Repeat every week" per row.

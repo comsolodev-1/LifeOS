@@ -41,6 +41,7 @@ export async function POST(req: Request) {
         vault: await listVault(ownerId),
         tokenMap: new TokenMap(),
         jsonSchema: EXTRACTION_JSON_SCHEMA,
+        deterministic: true,
       },
       defaultDeps(ownerId),
     );

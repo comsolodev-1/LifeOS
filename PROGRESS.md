@@ -50,6 +50,12 @@ Real sign-in with Google/GitHub, Neon queries and migration, Vercel deploy, inst
 - Migration 0004: events
 - 132 tests total
 
+## Sprint 4 fix: consistent photo extraction
+- Deterministic mode (temperature 0, bigger output budget) for extraction
+- Prompt now demands every block, one event per date, a per-column count check, and dates when the picture shows them
+- Up to 80 events per photo, sorted by date and time; Select all/none; per-row "Repeat every week"; "Missed some? Scan again" merges only new events
+- 140 tests total
+
 ## Not verified
 A real phone photo through Gemini (needs your key and a photo), the touch drawing of cover boxes on a phone, and a real streamed Gemini turn with function calling on gemini-3.1-flash-lite (the scripted tests cover our side only). Sprint 2 screens on a phone and against Neon. A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
 

@@ -15,7 +15,10 @@ interface Box {
   w: number;
   h: number;
 }
-type Row = Candidate & { include: boolean };
+type Row = Candidate & { include: boolean; repeat: boolean };
+
+const weekdayOfDate = (d: string) => new Date(`${d}T00:00:00Z`).getUTCDay();
+const rowKey = (r: Candidate) => `${r.title.toLowerCase().trim()}|${r.date || r.days.join(",")}|${r.startTime}`;
 type Stage = "pick" | "blur" | "consent" | "sending" | "review";
 
 function toBase64(blob: Blob): Promise<string> {
@@ -55,6 +58,8 @@ export function ImportFlow() {
   const [rows, setRows] = useState<Row[]>([]);
   const [info, setInfo] = useState<string | null>(null);
   const [until, setUntil] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const lastImage = useRef<string | null>(null);
   const base = useRef<HTMLCanvasElement | null>(null);
   const view = useRef<HTMLCanvasElement | null>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
@@ -111,26 +116,50 @@ export function ImportFlow() {
     return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) };
   }
 
+  async function scan(image: string): Promise<{ candidates: Candidate[]; dropped: number }> {
+    const res = await fetch("/api/schedule/extract", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image, consent: true }),
+    });
+    const data = (await res.json().catch(() => null)) as { error?: string; candidates?: Candidate[]; dropped?: number } | null;
+    if (!res.ok || !data?.candidates) throw new Error(data?.error ?? "Could not read the schedule.");
+    return { candidates: data.candidates, dropped: data.dropped ?? 0 };
+  }
+
   async function send() {
     setError(null);
     setStage("sending");
     try {
       redraw(boxes, null);
       const image = await encodeForUpload(view.current as HTMLCanvasElement);
-      const res = await fetch("/api/schedule/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image, consent: true }),
-      });
-      const data = (await res.json().catch(() => null)) as { error?: string; candidates?: Candidate[]; dropped?: number } | null;
-      if (!res.ok || !data?.candidates) throw new Error(data?.error ?? "Could not read the schedule.");
-      if (data.candidates.length === 0) throw new Error("No events were found in that photo. Try a clearer, closer picture.");
-      setRows(data.candidates.map((c) => ({ ...c, include: c.flags.length === 0 })));
-      setInfo(data.dropped ? `${data.dropped} unreadable item(s) were skipped.` : null);
+      lastImage.current = image;
+      const { candidates, dropped } = await scan(image);
+      if (candidates.length === 0) throw new Error("No events were found in that photo. Try a clearer, closer picture.");
+      setRows(candidates.map((c) => ({ ...c, include: c.flags.length === 0, repeat: false })));
+      setInfo(dropped ? `${dropped} unreadable item(s) were skipped.` : null);
       setStage("review");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
       setStage("blur");
+    }
+  }
+
+  // Reading a busy picture can miss items, so the owner can scan again; only events not already listed are added.
+  async function scanAgain() {
+    if (!lastImage.current || scanning) return;
+    setError(null);
+    setScanning(true);
+    try {
+      const { candidates } = await scan(lastImage.current);
+      const known = new Set(rows.map(rowKey));
+      const fresh = candidates.filter((c) => !known.has(rowKey(c)));
+      setRows((rs) => [...rs, ...fresh.map((c) => ({ ...c, include: c.flags.length === 0, repeat: false }))]);
+      setInfo(fresh.length ? `Scanned again and found ${fresh.length} more event${fresh.length === 1 ? "" : "s"}.` : "Scanned again and found nothing new.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setScanning(false);
     }
   }
 
@@ -214,6 +243,14 @@ export function ImportFlow() {
             <p className="font-medium">Review before saving</p>
             <p className="mt-1 text-muted">AI read these from your photo. Nothing is saved until you check it and tap Save. Items with highlighted fields were hard to read, so they start unselected.</p>
             {info ? <p className="mt-1 text-muted">{info}</p> : null}
+            <p className="mt-1 font-medium">{rows.length} event{rows.length === 1 ? "" : "s"} found, {rows.filter((r) => r.include).length} selected</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setRows((rs) => rs.map((r) => ({ ...r, include: true })))} className="min-h-11 rounded-lg border border-line text-sm">Select all</button>
+              <button type="button" onClick={() => setRows((rs) => rs.map((r) => ({ ...r, include: false })))} className="min-h-11 rounded-lg border border-line text-sm">Select none</button>
+            </div>
+            <button type="button" disabled={scanning} onClick={() => void scanAgain()} className="mt-2 min-h-11 w-full rounded-lg border border-line text-sm disabled:opacity-60">
+              {scanning ? "Scanning again..." : "Missed some? Scan again"}
+            </button>
           </div>
           {rows.map((r) => {
             const bad = (f: CandidateField) => r.flags.includes(f);
@@ -247,6 +284,11 @@ export function ImportFlow() {
                     <input type="date" value={r.date} onChange={(e) => update(r.id, { date: e.target.value, flags: clearFlag(r, "schedule") })} className={`${field} mt-1 ${ring("schedule")}`} />
                   </label>
                 )}
+                {r.days.length === 0 && r.date ? (
+                  <label className="flex min-h-11 items-center gap-2 text-sm">
+                    <input type="checkbox" checked={r.repeat} onChange={(e) => update(r.id, { repeat: e.target.checked })} /> Repeat every week
+                  </label>
+                ) : null}
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block text-sm">Start {bad("startTime") ? <span className="text-amber-600">(check)</span> : null}
                     <input type="time" value={r.startTime} onChange={(e) => update(r.id, { startTime: e.target.value, flags: clearFlag(r, "startTime") })} className={`${field} mt-1 ${ring("startTime")}`} />
@@ -264,7 +306,7 @@ export function ImportFlow() {
           <input
             type="hidden"
             name="payload"
-            value={JSON.stringify({ until: until || undefined, items: rows.filter((r) => r.include).map(({ title, days, date, startTime, endTime }) => ({ title, days, date, startTime, endTime })) })}
+            value={JSON.stringify({ until: until || undefined, items: rows.filter((r) => r.include).map((r) => ({ title: r.title, days: r.repeat && r.date ? [weekdayOfDate(r.date)] : r.days, date: r.date, startTime: r.startTime, endTime: r.endTime })) })}
           />
           {saveState.error ? <p role="alert" className="text-sm text-red-500">{saveState.error}</p> : null}
           <button disabled={saving || !rows.some((r) => r.include)} className="min-h-11 w-full rounded-lg bg-accent text-sm font-medium text-paper disabled:opacity-50">

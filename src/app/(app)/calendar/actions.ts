@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { eventInput, createEvent, createEvents, deleteEvent, getOwnerTimezone, skipOccurrence, updateEvent, type EventInput } from "@/lib/dal/events";
-import { addDays, isDateString, localDateString, weekdayOf } from "@/lib/calendar/timezone";
+import { buildImportInputs } from "@/lib/calendar/import";
+import { isDateString, localDateString } from "@/lib/calendar/timezone";
 import { AppError } from "@/lib/errors";
 import { requireOwnerId } from "@/lib/session";
 
@@ -115,7 +116,7 @@ const importSchema = z.object({
       }),
     )
     .min(1, "Select at least one event")
-    .max(40),
+    .max(80),
 });
 
 // Saves only the events the owner reviewed and selected. Every row is validated again on the server.
@@ -133,20 +134,9 @@ export async function saveImported(_prev: EventFormState, form: FormData): Promi
   if (until && !isDateString(until)) return { error: "Repeat-until date is not valid" };
 
   const tz = await getOwnerTimezone(ownerId);
-  const today = localDateString(new Date(), tz);
-  const inputs: EventInput[] = [];
-  for (const [i, item] of items.entries()) {
-    let date = item.date;
-    let recurrence: EventInput["recurrence"];
-    if (item.days.length > 0) {
-      date = Array.from({ length: 7 }, (_, k) => addDays(today, k)).find((d) => item.days.includes(weekdayOf(d))) ?? today;
-      recurrence = { freq: "weekly", interval: 1, byWeekday: item.days, ...(until && until >= date ? { until } : {}) };
-    }
-    const candidate = { title: item.title.trim(), kind: "fixed" as const, date, startTime: item.startTime, endTime: item.endTime, recurrence };
-    const check = eventInput.safeParse(candidate);
-    if (!check.success) return { error: `Row ${i + 1} (${item.title || "untitled"}): ${check.error.issues[0]?.message ?? "invalid"}` };
-    inputs.push(candidate);
-  }
+  const built = buildImportInputs(items, until, localDateString(new Date(), tz));
+  if (!built.inputs) return { error: built.error };
+  const inputs = built.inputs;
   try {
     await createEvents(ownerId, inputs, "photo");
   } catch (e) {
