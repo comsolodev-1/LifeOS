@@ -36,8 +36,16 @@ export async function runAssistantTurn(
   ownerId: string,
   input: { conversationId?: string; text: string },
   deps: GatewayDeps,
-  emit: (event: ChatEvent) => void,
+  send: (event: ChatEvent) => void,
 ): Promise<void> {
+  // If the browser disconnects (the owner left the page), the turn still runs to the end and the reply is saved.
+  const emit = (event: ChatEvent) => {
+    try {
+      send(event);
+    } catch {
+      /* the client is gone; keep working */
+    }
+  };
   const text = input.text.trim();
   if (!text) return emit({ type: "error", message: "Write a message first." });
   if (text.length > MAX_MESSAGE_CHARS) return emit({ type: "error", message: `Messages are limited to ${MAX_MESSAGE_CHARS} characters.` });

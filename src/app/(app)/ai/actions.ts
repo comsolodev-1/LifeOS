@@ -81,5 +81,5 @@ export async function removeChat(form: FormData) {
   if (typeof id !== "string") return;
   await deleteConversation(ownerId, id);
   revalidatePath("/ai");
-  redirect("/ai");
+  redirect("/ai?new=1");
 }

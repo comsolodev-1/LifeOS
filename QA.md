@@ -26,14 +26,15 @@ Setup: run migration-0004-calendar.sql in Neon first.
 - [ ] Settings > Privacy Vault > Recent AI requests: a "schedule_extract" entry shows "[image ...]" and no personal text
 - [ ] In AI chat ask "what's on my calendar this week?": it lists your events
 
-## Photo import: keeps working while you navigate (retest only this)
-- [ ] Choose a photo, Continue, Send. While it says "Reading your schedule", tap Home or Tasks. A banner "Reading your schedule photo. You can keep using the app." shows on every page
-- [ ] When it finishes, the banner changes to "Your schedule is ready to review". Tap it: the review list is there (nothing was lost)
-- [ ] Go to another page and back to Import photo while the list is open: the list and your edits (unticked rows, changed titles) are still there
-- [ ] Refresh the browser on the review screen: the list is still there. Close the tab and open the app again: it is gone (by design)
-- [ ] "Discard and start over" clears the list and returns to choosing a photo
-- [ ] After Save, leaving and returning to Import photo starts fresh (no old list)
-- [ ] Earlier fixes still fine: clean titles, "Skipped N that were already there", and the cleanup button
+## AI chat: leaving the page mid-answer (retest only this)
+- [ ] Send a message that needs a longer answer (for example "Plan my study week in detail"). While it is writing, tap Tasks, wait 10 seconds, then tap AI again
+- [ ] AI reopens your last chat (not a blank one). If the answer is still being written you see "Still writing your reply...", and the full answer appears by itself when it finishes
+- [ ] Do the same but also refresh the browser mid-answer: after reopening, the finished answer is there
+- [ ] Ask for something that creates a suggestion (for example "add a task to call my friend tomorrow"), leave and come back: the suggestion card is there with Confirm and Dismiss
+- [ ] "New chat" (under Chats) opens a blank chat and does not jump back to the old one; after your first message in it, AI reopens that new chat
+- [ ] Deleting a chat sends you to a blank new chat
+- [ ] You cannot send a second message while "Still writing your reply" is showing
+- [ ] Photo import still keeps going while you navigate (earlier fix)
 
 ## Known gaps (not bugs)
 Goals, Reality Check, and Settings (modes, export) are placeholders. The AI cannot read events or goals yet, and cannot analyze photos.

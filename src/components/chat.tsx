@@ -1,39 +1,108 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { ActionCard, MemoryProposalCard, type SuggestionData } from "@/components/suggestion-cards";
+import { shouldPoll } from "@/lib/ai/chat-state";
 
 export interface ChatMsg {
   id: string;
   role: "user" | "assistant";
   content: string;
+  createdAt?: string;
 }
 
 type Card = { key: string } & ({ kind: "action"; action: SuggestionData } | { kind: "memory"; memory: { id: string; category: string; content: string } });
 
+const LAST_CHAT_KEY = "lifeos.chat.last";
+const POLL_EVERY_MS = 3000;
+const POLL_MAX = 50;
+
 export function Chat({
-  initialMessages, initialConversationId, initialCards,
+  initialMessages, initialConversationId, initialCards, isNew,
 }: {
   initialMessages: ChatMsg[];
   initialConversationId?: string;
   initialCards: Card[];
+  isNew: boolean;
 }) {
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMsg[]>(initialMessages);
   const [cards, setCards] = useState<Card[]>(initialCards);
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [waiting, setWaiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
-  }, [messages, cards]);
+  }, [messages, cards, waiting]);
+
+  // Reopen the last chat when AI is opened without choosing one, and pick up a reply that was still being written when the owner left.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    const kickoff = setTimeout(() => {
+      if (!initialConversationId) {
+        const last = !isNew ? window.localStorage.getItem(LAST_CHAT_KEY) : null;
+        if (last) router.replace(`/ai?c=${last}`);
+        return;
+      }
+      window.localStorage.setItem(LAST_CHAT_KEY, initialConversationId);
+      if (!shouldPoll(initialMessages)) return;
+      setWaiting(true);
+      let tries = 0;
+      const tick = async () => {
+        if (cancelled) return;
+        tries++;
+        try {
+          const res = await fetch(`/api/chat/messages?c=${initialConversationId}`);
+          const data = (await res.json()) as { messages?: ChatMsg[] };
+          const last = data.messages?.[data.messages.length - 1];
+          if (data.messages && last?.role === "assistant") {
+            if (cancelled) return;
+            setMessages(data.messages);
+            setWaiting(false);
+            router.refresh();
+            return;
+          }
+        } catch {
+          /* try again */
+        }
+        if (tries >= POLL_MAX) {
+          if (!cancelled) {
+            setWaiting(false);
+            setError("The reply did not finish. Send your message again.");
+          }
+          return;
+        }
+        timer = setTimeout(tick, POLL_EVERY_MS);
+      };
+      timer = setTimeout(tick, 1500);
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(kickoff);
+      if (timer) clearTimeout(timer);
+    };
+    // Runs once per opened conversation; the props describe that conversation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function send() {
     const text = input.trim();
-    if (!text || busy) return;
+    if (!text || busy || waiting) return;
     setInput("");
     setError(null);
     setBusy(true);
@@ -67,8 +136,11 @@ export function Chat({
             | { type: "done" }
             | { type: "error"; message: string };
           if (ev.type === "meta") {
-            setConversationId(ev.conversationId);
-            window.history.replaceState(null, "", `/ai?c=${ev.conversationId}`);
+            window.localStorage.setItem(LAST_CHAT_KEY, ev.conversationId);
+            if (mounted.current) {
+              setConversationId(ev.conversationId);
+              window.history.replaceState(null, "", `/ai?c=${ev.conversationId}`);
+            }
           } else if (ev.type === "text") {
             setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: x.content + ev.delta } : x)));
           } else if (ev.type === "suggestion") {
@@ -99,6 +171,12 @@ export function Chat({
           <p className="whitespace-pre-wrap">{m.content || (busy ? "Thinking..." : "")}</p>
         </div>
       ))}
+      {waiting ? (
+        <div role="status" className="mr-8 rounded-xl border border-line bg-surface p-3 text-sm">
+          <p className="mb-1 text-xs font-medium text-accent">AI</p>
+          <p className="text-muted">Still writing your reply. It will appear here, even if you leave this page.</p>
+        </div>
+      ) : null}
       {cards.map((c) => (c.kind === "action" ? <ActionCard key={c.key} action={c.action} /> : <MemoryProposalCard key={c.key} memory={c.memory} />))}
       {error ? <p role="alert" className="rounded-lg border border-red-400/50 p-3 text-sm">{error}</p> : null}
       <div ref={bottom} />
@@ -119,7 +197,7 @@ export function Chat({
           aria-label="Message"
           className="min-h-11 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-base"
         />
-        <button disabled={busy || !input.trim()} aria-label="Send" className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-paper disabled:opacity-50">
+        <button disabled={busy || waiting || !input.trim()} aria-label="Send" className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-paper disabled:opacity-50">
           <Send size={18} aria-hidden />
         </button>
       </form>

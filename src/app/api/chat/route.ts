@@ -24,15 +24,30 @@ export async function POST(req: Request) {
   if (!parsed.success) return json(400, "Invalid request.");
 
   const encoder = new TextEncoder();
+  let open = true;
   const stream = new ReadableStream({
+    cancel() {
+      open = false;
+    },
     async start(controller) {
-      const send = (event: ChatEvent) => controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+      const send = (event: ChatEvent) => {
+        if (!open) return;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+        } catch {
+          open = false;
+        }
+      };
       try {
         await runAssistantTurn(ownerId, { text: parsed.data.message, conversationId: parsed.data.conversationId }, defaultDeps(ownerId), send);
       } catch {
         send({ type: "error", message: "Something went wrong. Try again." });
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
       }
     },
   });

@@ -68,6 +68,12 @@ Real sign-in with Google/GitHub, Neon queries and migration, Vercel deploy, inst
 - "Discard and start over" button
 - 162 tests total
 
+## Sprint 4 fix 4: AI chat survives leaving the page
+- Server finishes and saves a reply even if the browser disconnects (route and turn runner no longer fail when the client is gone)
+- Returning to a conversation with a recent unanswered message polls for the reply and shows it when ready; suggestion cards reload from the database
+- Opening AI reopens the last chat (id kept in localStorage); "New chat" uses ?new=1
+- 164 tests total
+
 ## Not verified
 Navigation behaviour in a real browser (the logic is tested, the screens are not), a real phone photo through Gemini (needs your key and a photo), the touch drawing of cover boxes on a phone, and a real streamed Gemini turn with function calling on gemini-3.1-flash-lite (the scripted tests cover our side only). Sprint 2 screens on a phone and against Neon. A real Gemini call (needs your key), the default model id gemini-3.8-flash (override with GEMINI_MODEL), Vault add/delete against Neon.
 

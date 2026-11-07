@@ -12,8 +12,8 @@ import { removeChat } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function AiPage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
-  const { c } = await searchParams;
+export default async function AiPage({ searchParams }: { searchParams: Promise<{ c?: string; new?: string }> }) {
+  const { c, new: newChat } = await searchParams;
   const missing = [!isDbConfigured() && "DATABASE_URL", !isVaultKeyValid(process.env.VAULT_KEY) && "VAULT_KEY", !process.env.GEMINI_API_KEY && "GEMINI_API_KEY"].filter(Boolean) as string[];
   if (missing.length) {
     return (
@@ -59,7 +59,7 @@ export default async function AiPage({ searchParams }: { searchParams: Promise<{
         <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-medium">Chats ({data.convs.length})</summary>
         <ul className="divide-y divide-line border-t border-line">
           <li>
-            <Link href="/ai" className="flex min-h-11 items-center px-4 text-sm text-accent">New chat</Link>
+            <Link href="/ai?new=1" className="flex min-h-11 items-center px-4 text-sm text-accent">New chat</Link>
           </li>
           {data.convs.map((cv) => (
             <li key={cv.id} className="flex items-center">
@@ -78,9 +78,10 @@ export default async function AiPage({ searchParams }: { searchParams: Promise<{
       </details>
       <Chat
         key={data.current ?? "new"}
-        initialMessages={data.msgs.map((m) => ({ id: m.id, role: m.role, content: m.content }))}
+        initialMessages={data.msgs.map((m) => ({ id: m.id, role: m.role, content: m.content, createdAt: m.createdAt.toISOString() }))}
         initialConversationId={data.current}
         initialCards={cards}
+        isNew={newChat === "1"}
       />
     </>
   );

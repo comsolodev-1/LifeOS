@@ -267,3 +267,39 @@ describe("calendar tool", () => {
     expect(events.filter((e) => e.type === "text").map((e) => (e as { delta: string }).delta).join("")).toBe("You have two overlapping events: Maria Santos and Dentist.");
   });
 });
+
+import { shouldPoll } from "../src/lib/ai/chat-state";
+
+describe("leaving the page mid-reply", () => {
+  it("still finishes the turn and saves the reply when the client disconnects after the first event", async () => {
+    const { deps } = scripted([[{ text: "Here is " }, { text: "your answer." }]]);
+    let events = 0;
+    const result: ChatEvent[] = [];
+    await runAssistantTurn(
+      A,
+      { text: "tell me something" },
+      deps,
+      (e) => {
+        events++;
+        if (events > 1) throw new Error("client disconnected");
+        result.push(e);
+      },
+    );
+    const metaEvent = result.find((e) => e.type === "meta") as { conversationId: string };
+    const saved = await listMessages(A, metaEvent.conversationId);
+    expect(saved.map((m) => m.role)).toEqual(["user", "assistant"]);
+    expect(saved[1].content).toBe("Here is your answer.");
+  });
+
+  it("decides when a conversation probably has an unfinished reply", () => {
+    const now = new Date("2026-11-07T10:00:00Z").getTime();
+    const ago = (s: number) => new Date(now - s * 1000).toISOString();
+    expect(shouldPoll([{ role: "user", createdAt: ago(20) }], now)).toBe(true);
+    expect(shouldPoll([{ role: "assistant", createdAt: ago(100) }, { role: "user", createdAt: ago(20) }], now)).toBe(true);
+    expect(shouldPoll([{ role: "user", createdAt: ago(20) }, { role: "assistant", createdAt: ago(10) }], now)).toBe(false);
+    expect(shouldPoll([{ role: "user", createdAt: ago(600) }], now)).toBe(false);
+    expect(shouldPoll([{ role: "user" }], now)).toBe(false);
+    expect(shouldPoll([], now)).toBe(false);
+    expect(shouldPoll([{ role: "user", createdAt: new Date(now + 60_000).toISOString() }], now)).toBe(false);
+  });
+});

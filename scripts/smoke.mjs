@@ -76,5 +76,10 @@ await check("signed-out POST /api/schedule/extract is refused (401, or 503 if AI
   assert([401, 503].includes(res.status), `status ${res.status}`);
 });
 
+await check("signed-out GET /api/chat/messages is refused (401, or 503 if AI is not configured)", async () => {
+  const res = await fetch(base + "/api/chat/messages?c=3f2b8c1e-5d7a-4b9e-8c21-0a1b2c3d4e5f", { redirect: "manual" });
+  assert([401, 503].includes(res.status), `status ${res.status}`);
+});
+
 console.log(failed ? `\n${failed} check(s) failed` : "\nAll smoke checks passed");
 process.exit(failed ? 1 : 0);

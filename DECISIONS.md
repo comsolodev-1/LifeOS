@@ -33,4 +33,5 @@
 - Title cleaning is rule-based, not AI: it drops a leading time, strips brackets wrapping the whole title, and title-cases ALL CAPS. It keeps misspellings. Words of two letters or less and bracketed tags stay uppercase.
 - Duplicate detection on import matches title (case-insensitive) plus exact start and end. It does not compare repeat rules.
 - Import state lives in a client provider in the (app) layout so it persists across in-app navigation. Only the review text is stored in sessionStorage; the photo is never persisted and "Scan again" is unavailable after a page reload (the photo is gone by design).
-- Known limitation: the AI chat still stops showing a reply if you leave the page mid-answer.
+- AI chat: the server always finishes and saves a turn even if the client disconnects. A returning page polls /api/chat/messages (every 3 s, up to ~2.5 min) while the newest message is a recent unanswered user message. The live typing view is not resumed; the finished reply appears instead.
+- Only the last chat id is kept in localStorage (no message content).
